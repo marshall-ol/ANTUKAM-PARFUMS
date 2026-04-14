@@ -682,11 +682,12 @@
     const defaultMessage = "Hola, quiero información de perfumes y precios.";
     const waUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(defaultMessage)}`;
 
-    // Ahora sí busca dentro de la carpeta /imagenes
-    const imageFor = (n) => ({
-      jpeg: `./imagenes/perfume${n}.jpeg`,
-      jpg: `./imagenes/perfume${n}.jpg`
-    });
+    const imageFor = (n) => ([
+      `./perfume${n}.jpg`,
+      `./perfume${n}.jpeg`,
+      `./perfume${n}.png`,
+      `./perfume${n}.webp`
+    ]);
 
     const perfumes = [
       { name: "Phantom My Hero", desc: "Tiene una salida fresca y limpia con un toque moderno que se siente juvenil y elegante al mismo tiempo. Conforme evoluciona, deja una vibra suave, agradable y muy fácil de llevar, sin volverse pesada. Es ideal para el día a día, para la escuela, la oficina y salidas casuales donde quieres oler bien sin exagerar.", price3ml: "$60", price5ml: "$100" },
@@ -723,7 +724,7 @@
       const stockCount = ((index * 3) % 8) + 1;
       return {
         ...perfume,
-        ...imageFor(index + 1),
+        images: imageFor(index + 1),
         stockCount
       };
     });
@@ -811,8 +812,11 @@
       return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(text)}`;
     }
 
-    function resolveImageSrc(perfume){
-      return perfume.jpeg || perfume.jpg || fallbackImage(perfume.name);
+    function nextImage(img){
+      const fallbacks = (img.dataset.fallbacks || "").split("|").filter(Boolean);
+      const next = fallbacks.shift();
+      img.dataset.fallbacks = fallbacks.join("|");
+      img.src = next || fallbackImage(img.alt);
     }
 
     function mediaHtml(perfume, variant = "card", loading = "lazy"){
@@ -820,19 +824,21 @@
         ? `<span class="stock-badge featured">${stockLabel(perfume)}</span>`
         : `<span class="stock-badge ${stockClass(perfume)}">${stockLabel(perfume)}</span>`;
 
-      const primarySrc = resolveImageSrc(perfume);
-      const altSrc = perfume.jpeg && perfume.jpg && primarySrc === perfume.jpeg ? perfume.jpg : (perfume.jpeg || perfume.jpg);
+      const images = perfume.images?.length ? perfume.images : [fallbackImage(perfume.name)];
+      const primary = images[0] || fallbackImage(perfume.name);
+      const fallbacks = images.slice(1).join("|");
 
       return `
         <div class="media">
           ${badge}
           <img
             class="perfume-img perfume-img--${variant}"
-            src="${primarySrc}"
+            src="${primary}"
             alt="${perfume.name}"
             loading="${loading}"
             decoding="async"
-            onerror="this.onerror=null;this.src='${altSrc || fallbackImage(perfume.name)}';"
+            data-fallbacks="${fallbacks}"
+            onerror="window.nextImage(this)"
           >
         </div>
       `;
